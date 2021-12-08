@@ -1,0 +1,123 @@
+version: '3'
+
+services:
+  mysql-database:
+    image: mysql
+    container_name: mysql-database
+    restart: on-failure:5
+    volumes:
+      - ./mysql-database:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: webtienganh
+      MYSQL_ROOT_PASSWORD: root123
+    ports:
+      - 3306:3306
+    networks:
+      - webtienganh
+      
+  mongo-database:
+    image: mongo
+    container_name: mongo-database
+    restart: on-failure:5
+    volumes:
+      - ./mongo-database:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: webTiengAnhDB
+    ports:
+      - 27017:27017
+    networks:
+      - webtienganh
+
+  webtienganh-springboot:
+    image: webtienganh-springboot
+    container_name: webtienganh-springboot
+    restart: on-failure:5
+    ports:
+      - 8080:8080
+    depends_on:
+      - mysql-database
+    environment:
+      DATABASE_URL: jdbc:mysql://mysql-database:3306/webtienganh
+      DATABASE_USERNAME: root
+      DATABASE_PASSWORD: root123
+      CLOUDINARY_URL:
+      GOOGLE_ID:
+      GOOGLE_SECRET: 
+      FACEBOOK_ID: 
+      FACEBOOK_SECRET: 
+      TOKEN_SECRET: 926D96C90030DD58429D2751AC1BDBBC
+      #WEB_NAME: https://tienganhpro.xyz
+      WEB_NAME: 
+    build:
+      context: ./WebTiengAnh
+    networks:
+      - webtienganh
+
+  webtienganh-nodejs:
+    image: webtienganh-nodejs
+    container_name: webtienganh-nodejs
+    restart: on-failure:5
+    ports:
+      - 3001:3001
+    depends_on:
+      - mongo-database
+    environment:
+      PORT: 3001
+      DATABASE_URL: mongodb://mongo-database:27017/webTiengAnhDB
+    build:
+      context: ./web-tieng-anh-nodejs
+    networks:
+      - webtienganh
+
+  webtienganh-reactjs-client:
+    image: webtienganh-reactjs-client
+    container_name: webtienganh-reactjs-client
+    restart: on-failure:5
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - webtienganh-nodejs
+      - webtienganh-springboot
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    build:
+      context: ./web-tieng-anh-client
+      args:
+        #- REACT_APP_JAVA_API_URL=https://tienganhpro.xyz/api
+        #- REACT_APP_NODEJS_API_URL=https://tienganhpro.xyz/node-api
+        #- REACT_APP_GOOGLE_AUTHEN_URL=http://tienganhpro.xyz:8080/oauth2/authorization/google?redirect_uri=https://tienganhpro.xyz/oauth2/redirect
+        - REACT_APP_JAVA_API_URL=
+        - REACT_APP_NODEJS_API_URL=
+        - REACT_APP_GOOGLE_AUTHEN_URL=
+    networks:
+      - webtienganh
+
+  webtienganh-reactjs-admin:
+    image: webtienganh-reactjs-admin
+    container_name: webtienganh-reactjs-admin
+    restart: on-failure:5
+    ports:
+      - 81:80
+    depends_on:
+      - webtienganh-nodejs
+      - webtienganh-springboot
+    volumes:
+      - ./nginx-admin.conf:/etc/nginx/nginx.conf
+    build:
+      context: ./web-tieng-anh-admin
+      args:
+        #- REACT_APP_JAVA_API_URL=https://tienganhpro.xyz/api
+        #- REACT_APP_NODEJS_API_URL=https://tienganhpro.xyz/node-api
+        - REACT_APP_JAVA_API_URL=
+        - REACT_APP_NODEJS_API_URL=
+    networks:
+      - webtienganh
+
+networks:
+  webtienganh:
+    driver: bridge
+volumes:
+    mysql-database:
+    mongo-database:
